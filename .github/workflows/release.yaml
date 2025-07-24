@@ -3,7 +3,7 @@ name: Release Contracts
 on:
   push:
     tags:
-      - 'v[0-9]+.[0-9]+.[0-9]+*'
+      - "v[0-9]+.[0-9]+.[0-9]+*"
 
 permissions:
   contents: write
@@ -48,18 +48,35 @@ jobs:
           ls -l artifacts/
 
       - name: Create GitHub Release
+        id: create_release
         uses: softprops/action-gh-release@v2
         with:
           body: |
             ## Full Changelog
-            
+
             ${{ steps.changelog.outputs.changelog }}
-            
+
             ---
-            
+
             This release contains the optimized CosmWasm contract builds (`.wasm` files).
             The `checksums.txt` file contains the SHA256 checksums for verification.
           files: |
             artifacts/*.wasm
             artifacts/checksums.txt
           fail_on_unmatched_files: true
+
+      - name: Notify Discord
+        if: success()
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_RELEASE_WEBHOOK }}
+        run: |
+          RELEASE_URL="https://github.com/${{ github.repository }}/releases/tag/${{ github.ref_name }}"
+          CHANGELOG="${{ steps.changelog.outputs.changelog }}"
+
+          curl -H "Content-Type: application/json" \
+            -X POST \
+            -d @- $DISCORD_WEBHOOK <<EOF
+          {
+            "content": "**📦 New contracts release [${{ github.ref_name }}]($RELEASE_URL)**\n\n${CHANGELOG}"
+          }
+          EOF
