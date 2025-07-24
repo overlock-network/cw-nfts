@@ -1,0 +1,65 @@
+name: Release Contracts
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+*'
+
+permissions:
+  contents: write
+
+jobs:
+  build_and_release:
+    name: Build and Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate Changelog
+        id: changelog
+        run: |
+          CURRENT_TAG=${{ github.ref_name }}
+          echo "Current tag: $CURRENT_TAG"
+
+          PREVIOUS_TAG=$(git describe --tags --abbrev=0 "${CURRENT_TAG}^" 2>/dev/null || git rev-list --max-parents=0 HEAD)
+          echo "Previous tag/commit: $PREVIOUS_TAG"
+
+          CHANGELOG_CONTENT=$(git log --pretty=format:'* %s (%h)' $PREVIOUS_TAG..$CURRENT_TAG)
+
+          {
+            echo 'changelog<<EOF'
+            echo "$CHANGELOG_CONTENT"
+            echo 'EOF'
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Build and optimize contracts
+        run: |
+          docker run --rm -v "$(pwd)":/code \
+            --mount type=volume,source="$(basename "$(pwd)")_cache",target=/code/target \
+            --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
+            cosmwasm/workspace-optimizer:0.16.0
+
+      - name: List generated artifacts
+        run: |
+          echo "The following artifacts were generated:"
+          ls -l artifacts/
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          body: |
+            ## Full Changelog
+            
+            ${{ steps.changelog.outputs.changelog }}
+            
+            ---
+            
+            This release contains the optimized CosmWasm contract builds (`.wasm` files).
+            The `checksums.txt` file contains the SHA256 checksums for verification.
+          files: |
+            artifacts/*.wasm
+            artifacts/checksums.txt
+          fail_on_unmatched_files: true
