@@ -71,12 +71,11 @@ jobs:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_RELEASE_WEBHOOK }}
         run: |
           RELEASE_URL="https://github.com/${{ github.repository }}/releases/tag/${{ github.ref_name }}"
-          CHANGELOG="${{ steps.changelog.outputs.changelog }}"
 
           curl -H "Content-Type: application/json" \
             -X POST \
             -d @- $DISCORD_WEBHOOK <<EOF
           {
-            "content": "**📦 New contracts release [${{ github.ref_name }}]($RELEASE_URL)**\n\n${CHANGELOG}"
+            "content": "📦 New contracts release [${{ github.ref_name }}]($RELEASE_URL)"
           }
           EOF
