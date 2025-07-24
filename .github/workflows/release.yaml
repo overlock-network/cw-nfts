@@ -52,14 +52,8 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           body: |
-            ## Full Changelog
-
+            ## Changelog
             ${{ steps.changelog.outputs.changelog }}
-
-            ---
-
-            This release contains the optimized CosmWasm contract builds (`.wasm` files).
-            The `checksums.txt` file contains the SHA256 checksums for verification.
           files: |
             artifacts/*.wasm
             artifacts/checksums.txt
